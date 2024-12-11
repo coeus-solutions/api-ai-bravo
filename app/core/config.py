@@ -1,6 +1,7 @@
 from pydantic_settings import BaseSettings
 from typing import Optional, List
 from functools import lru_cache
+import os
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Recognition Platform"
@@ -12,11 +13,18 @@ class Settings(BaseSettings):
 
     @property
     def sync_database_url(self) -> str:
-        return self.DATABASE_URL
+        # Handle both Railway's and Supabase's database URL formats
+        if "postgresql://" in self.DATABASE_URL:
+            return self.DATABASE_URL
+        # If using Railway's postgres:// format, convert to postgresql://
+        return self.DATABASE_URL.replace("postgres://", "postgresql://")
 
     @property
     def async_database_url(self) -> str:
-        return self.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://")
+        # First convert to postgresql:// if needed
+        base_url = self.sync_database_url
+        # Then convert to asyncpg format
+        return base_url.replace("postgresql://", "postgresql+asyncpg://")
 
     # Supabase
     SUPABASE_URL: str
@@ -28,6 +36,9 @@ class Settings(BaseSettings):
     
     # CORS - Allow all origins
     ALLOW_ALL_ORIGINS: bool = True
+
+    # Environment
+    ENVIRONMENT: str = os.getenv("RAILWAY_ENVIRONMENT", "development")
 
     class Config:
         case_sensitive = True
